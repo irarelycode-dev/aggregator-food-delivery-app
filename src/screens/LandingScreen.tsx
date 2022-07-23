@@ -1,10 +1,20 @@
-import { View, Text, StyleSheet, Image, Dimensions } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Dimensions,
+  ActivityIndicator,
+} from "react-native";
 import React, { useState, useReducer, useEffect } from "react";
 import * as Location from "expo-location";
+import { useNavigation } from "../../utils/useNavigation";
 
 const screenWidth = Dimensions.get("screen").width;
 
 const LandingScreen: React.FC = (): JSX.Element => {
+  const { navigate } = useNavigation();
+
   const {
     container,
     navigation,
@@ -13,21 +23,23 @@ const LandingScreen: React.FC = (): JSX.Element => {
     footer,
     addressContainer,
     addressTitle,
+    addressText,
   } = styles;
 
   const [address, setAddress] = useState<Location.LocationGeocodedAddress>();
   const [errorMsg, setErrorMsg] = useState("");
 
   const [displayAddress, setDisplayAddress] = useState(
-    "Waiting for your current location"
+    "Fetching your location"
   );
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestBackgroundPermissionsAsync();
-      console.log("status", status);
+      let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setErrorMsg("Location access is not enabled");
+        setErrorMsg(
+          "Permissions to access your location has been denied. Please change your settings"
+        );
       }
       let location: any = await Location.getCurrentPositionAsync({});
       const { coords } = location;
@@ -39,8 +51,15 @@ const LandingScreen: React.FC = (): JSX.Element => {
         });
         for (let item of addressResponse) {
           setAddress(item);
-          let currentAddress = `${item.name},${item.street},${item.postalCode},${item.country}`;
+          let currentAddress = `${item.city},${item.postalCode},${item.country}`;
           setDisplayAddress(currentAddress);
+
+          if (currentAddress.length > 0) {
+            setTimeout(() => {
+              navigate("homeStack");
+            }, 2000);
+          }
+
           return;
         }
       } else {
@@ -57,13 +76,17 @@ const LandingScreen: React.FC = (): JSX.Element => {
           style={deliveryIcon}
         />
         <View style={addressContainer}>
-          {errorMsg !== "" ? (
-            <Text style={addressTitle}>Your delivery address</Text>
-          ) : (
+          <Text style={addressTitle}>Your delivery address</Text>
+          {errorMsg.length !== 0 ? (
             <Text style={addressTitle}>{errorMsg}</Text>
-          )}
+          ) : null}
         </View>
-        <Text>{displayAddress}</Text>
+        <Text style={addressText}>{displayAddress}</Text>
+        {!address ? (
+          <View>
+            <ActivityIndicator size="small" color="#0000ff" />
+          </View>
+        ) : null}
       </View>
       <View style={footer}></View>
     </View>
@@ -73,7 +96,7 @@ const LandingScreen: React.FC = (): JSX.Element => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "rgba(242,242,242,1)",
+    backgroundColor: "rgba(224,234,24,1)",
   },
   navigation: {
     flex: 2,
@@ -100,9 +123,10 @@ const styles = StyleSheet.create({
     color: "#707070",
   },
   addressText: {
-    fontSize: 20,
-    fontWeight: "200",
+    fontSize: 13,
+    fontWeight: "bold",
     color: "#4f4f4f",
+    marginTop: 50,
   },
 });
 
